@@ -1,0 +1,1240 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ヤード管理</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap');
+
+:root {
+  --bg:    #0b1117; --surf:  #131c2b; --surf2: #1a2535;
+  --bdr:   #1e2d3d; --acc:   #f5a623; --text:  #e2e8f0;
+  --muted: #4d6075; --green: #52c97a; --blue:  #4da8da;
+  --red:   #e8544a; --shad:  0 8px 32px rgba(0,0,0,.6);
+}
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+html,body { height:100%; overflow:hidden; }
+body { font-family:'Noto Sans JP',sans-serif; background:var(--bg); color:var(--text); display:flex; flex-direction:column; }
+
+/* ─ HEADER ─ */
+.hdr { height:52px; background:var(--surf); border-bottom:1px solid var(--bdr); display:flex; align-items:center; padding:0 16px; gap:11px; flex-shrink:0; z-index:50; }
+.logo { font-family:'Bebas Neue',cursive; font-size:22px; letter-spacing:4px; color:var(--acc); white-space:nowrap; }
+.logo em { color:var(--muted); font-size:11px; font-style:normal; letter-spacing:1px; margin-left:6px; }
+.chip { background:var(--surf2); border:1px solid var(--bdr); border-radius:6px; padding:3px 10px; font-size:12px; font-family:'JetBrains Mono',monospace; display:flex; align-items:center; gap:5px; white-space:nowrap; }
+.dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+.sync-area { margin-left:auto; display:flex; align-items:center; gap:7px; font-size:11px; color:var(--muted); font-family:'JetBrains Mono',monospace; }
+.sync-led { width:7px; height:7px; border-radius:50%; background:var(--green); transition:background .3s; }
+.sync-led.busy  { background:var(--acc); animation:blink .7s ease-in-out infinite; }
+.sync-led.error { background:var(--red); }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.35} }
+.btn { border:none; border-radius:6px; padding:6px 14px; font-size:13px; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:all .15s; display:flex; align-items:center; gap:5px; white-space:nowrap; }
+.btn-acc   { background:var(--acc); color:#000; font-weight:700; }
+.btn-acc:hover { background:#ffb83a; }
+.btn-ghost { background:transparent; color:var(--muted); border:1px solid var(--bdr); }
+.btn-ghost:hover { background:var(--surf2); color:var(--text); }
+.btn-danger { background:transparent; color:var(--red); border:1px solid rgba(232,84,74,.4); }
+.btn-danger:hover { background:rgba(232,84,74,.1); }
+
+/* ─ LAYOUT ─ */
+.body-wrap { display:flex; flex:1; overflow:hidden; }
+
+/* ─ SIDEBAR ─ */
+.sidebar { width:248px; background:var(--surf); border-right:1px solid var(--bdr); display:flex; flex-direction:column; flex-shrink:0; overflow:hidden; }
+.sb-sec { padding:11px 12px; border-bottom:1px solid var(--bdr); }
+.sb-sec.grow { flex:1; overflow:hidden; display:flex; flex-direction:column; }
+.sb-ttl { font-size:10px; font-weight:700; letter-spacing:2px; color:var(--muted); text-transform:uppercase; margin-bottom:8px; }
+.search-box { position:relative; }
+.search-box input { width:100%; background:var(--surf2); border:1px solid var(--bdr); border-radius:6px; padding:7px 10px 7px 27px; font-size:13px; color:var(--text); font-family:'Noto Sans JP',sans-serif; outline:none; }
+.search-box input:focus { border-color:var(--acc); }
+.search-box .ico { position:absolute; left:9px; top:50%; transform:translateY(-50%); font-size:12px; pointer-events:none; }
+.vscroll { flex:1; overflow-y:auto; }
+.vscroll::-webkit-scrollbar { width:4px; }
+.vscroll::-webkit-scrollbar-thumb { background:var(--bdr); border-radius:2px; }
+.vi { display:flex; align-items:center; gap:8px; padding:7px 12px; cursor:pointer; border-bottom:1px solid rgba(255,255,255,.03); transition:background .1s; }
+.vi:hover { background:var(--surf2); }
+.vi-bar { width:4px; height:34px; border-radius:2px; flex-shrink:0; }
+.vi-info { flex:1; min-width:0; }
+.vi-num { font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.vi-sub { font-size:10px; color:var(--muted); margin-top:2px; }
+.vi-badge { font-size:9px; padding:2px 5px; border-radius:3px; font-weight:700; flex-shrink:0; }
+.leg-row { display:flex; align-items:center; gap:7px; font-size:11px; color:var(--muted); margin-bottom:5px; }
+.sb-foot { padding:7px 12px; font-size:10px; color:var(--muted); border-top:1px solid var(--bdr); line-height:1.5; }
+
+/* ─ CANVAS ─ */
+.canvas-wrap { flex:1; overflow:hidden; background:var(--bg); position:relative; }
+.canvas-wrap.space-held { cursor:grab; }
+.canvas-wrap.panning    { cursor:grabbing; }
+.canvas-scaler { position:absolute; top:0; left:0; transform-origin:0 0; will-change:transform; }
+.yard-cv {
+  position:relative; width:6000px; height:4000px;
+  background-color:#090e15;
+  background-image:
+    linear-gradient(rgba(255,255,255,.028) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.028) 1px,transparent 1px),
+    linear-gradient(rgba(255,255,255,.01) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.01) 1px,transparent 1px);
+  background-size:100px 100px,100px 100px,20px 20px,20px 20px;
+  user-select:none;
+}
+
+/* ─ ZONE (SVG overlay) ─ */
+.zone-svg { position:absolute; left:0; top:0; width:100%; height:100%; pointer-events:none; overflow:visible; z-index:1; }
+/* ゾーン移動ハンドル（ラベル部分） */
+.zone-handle {
+  position:absolute; z-index:5;
+  display:flex; align-items:center; gap:6px;
+  cursor:grab; padding:4px 8px 4px 6px;
+  border-radius:5px;
+  transition:background .1s;
+  user-select:none;
+}
+.zone-handle:hover { background:rgba(255,255,255,.07); }
+.zone-handle:active { cursor:grabbing; }
+.zone-handle.editing { cursor:default; box-shadow:0 0 0 2px var(--acc); background:rgba(245,166,35,.1); border-radius:5px; }
+.zh-icon { font-size:13px; opacity:.5; }
+.zh-name { font-family:'Bebas Neue',cursive; font-size:15px; letter-spacing:2px; opacity:.6; }
+.zh-editbtn { font-size:11px; color:rgba(255,255,255,.35); padding:1px 5px; border-radius:3px; cursor:pointer; transition:color .1s, background .1s; }
+.zh-editbtn:hover { color:var(--text); background:rgba(255,255,255,.1); }
+
+/* ─ MAGNET ─ */
+.magnet { position:absolute; border-radius:6px; border:2px solid; width:96px; height:52px; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:grab; user-select:none; overflow:hidden; z-index:10; transition:box-shadow .12s, transform .1s; }
+.magnet::before { content:''; position:absolute; top:0; left:0; right:0; height:4px; background:currentColor; opacity:.6; }
+.magnet:hover   { box-shadow:0 0 0 2px var(--acc), 0 8px 20px rgba(0,0,0,.7); transform:translateY(-2px); z-index:20; }
+.magnet.is-dragging { cursor:grabbing; opacity:.65; transform:scale(1.07) rotate(.6deg) !important; z-index:50; box-shadow:0 12px 32px rgba(0,0,0,.8) !important; pointer-events:none; }
+.m-num   { font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:700; text-align:center; padding:0 5px; max-width:92px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; pointer-events:none; }
+.m-shape { font-size:9px; opacity:.65; margin-top:1px; text-align:center; max-width:92px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:0 4px; pointer-events:none; }
+.m-dot   { position:absolute; bottom:4px; right:4px; width:6px; height:6px; border-radius:50%; pointer-events:none; }
+@keyframes hpulse { 0%,100%{box-shadow:0 0 0 2px var(--acc)} 50%{box-shadow:0 0 0 9px rgba(245,166,35,.25)} }
+.hi { animation:hpulse .55s ease-in-out 3 !important; }
+
+/* ─ BOTTOM BAR ─ */
+.bbar { height:27px; background:var(--surf); border-top:1px solid var(--bdr); display:flex; align-items:center; padding:0 16px; gap:18px; font-size:11px; color:var(--muted); font-family:'JetBrains Mono',monospace; flex-shrink:0; }
+.bbar span { color:var(--text); }
+
+/* ─ OVERLAY / MODAL ─ */
+.overlay { position:fixed; inset:0; background:rgba(0,0,0,.72); backdrop-filter:blur(4px); z-index:200; display:flex; align-items:center; justify-content:center; opacity:0; pointer-events:none; transition:opacity .2s; }
+.overlay.open { opacity:1; pointer-events:all; }
+.modal { background:var(--surf); border:1px solid var(--bdr); border-radius:12px; padding:26px; width:720px; max-width:96vw; max-height:92vh; overflow-y:auto; transform:translateY(18px); transition:transform .2s; box-shadow:var(--shad); }
+.overlay.open .modal { transform:translateY(0); }
+.modal::-webkit-scrollbar { width:4px; }
+.modal::-webkit-scrollbar-thumb { background:var(--bdr); border-radius:2px; }
+.modal-title { font-family:'Bebas Neue',cursive; font-size:20px; letter-spacing:3px; color:var(--acc); margin-bottom:20px; }
+.field { margin-bottom:13px; }
+.field label { display:block; font-size:10px; font-weight:700; letter-spacing:1.5px; color:var(--muted); text-transform:uppercase; margin-bottom:5px; }
+.field input,.field select { width:100%; background:var(--surf2); border:1px solid var(--bdr); border-radius:6px; padding:9px 11px; font-size:14px; color:var(--text); font-family:'Noto Sans JP',sans-serif; outline:none; transition:border-color .15s; }
+.field input:focus,.field select:focus { border-color:var(--acc); }
+.row2 { display:flex; gap:10px; }
+.row2 .field { flex:1; }
+.modal-actions { display:flex; gap:8px; margin-top:18px; justify-content:flex-end; }
+.color-row { display:flex; gap:8px; flex-wrap:wrap; }
+.cswatch { width:28px; height:28px; border-radius:4px; cursor:pointer; border:2px solid transparent; transition:transform .1s,border-color .1s; }
+.cswatch:hover { transform:scale(1.15); }
+.cswatch.sel   { border-color:#fff; transform:scale(1.1); }
+
+/* ─ GRID SHAPE EDITOR ─ */
+.grid-editor-wrap {
+  background:var(--surf2); border:1px solid var(--bdr); border-radius:8px; padding:12px;
+}
+.grid-editor-hint {
+  font-size:11px; color:var(--muted); margin-bottom:10px; line-height:1.5;
+}
+.grid-size-row {
+  display:flex; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap;
+}
+.grid-size-row label { font-size:11px; color:var(--muted); }
+.grid-size-row input { width:52px; background:var(--bg); border:1px solid var(--bdr); border-radius:5px; padding:5px 8px; font-size:13px; color:var(--text); outline:none; font-family:'JetBrains Mono',monospace; }
+.grid-size-row input:focus { border-color:var(--acc); }
+.grid-preset-row { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+.preset-btn { font-size:11px; padding:3px 9px; border-radius:4px; cursor:pointer; background:var(--bg); border:1px solid var(--bdr); color:var(--muted); transition:all .1s; }
+.preset-btn:hover { border-color:var(--acc); color:var(--acc); }
+
+/* グリッドセル */
+#grid-cells {
+  overflow-x:auto; max-width:100%;
+  display:inline-grid;
+  gap:3px;
+  cursor:crosshair;
+}
+.gcell {
+  width:32px; height:32px; border-radius:4px;
+  border:1px solid rgba(255,255,255,.1);
+  background:rgba(255,255,255,.04);
+  transition:background .1s, border-color .1s;
+  cursor:crosshair;
+}
+.gcell.on {
+  background:var(--zone-bg, rgba(77,168,218,.35));
+  border-color:var(--zone-bd, rgba(77,168,218,.7));
+}
+.gcell:hover { opacity:.8; }
+
+/* ─ CTX MENU ─ */
+.ctx { position:fixed; background:var(--surf); border:1px solid var(--bdr); border-radius:8px; padding:4px; min-width:172px; z-index:300; box-shadow:var(--shad); display:none; }
+.ctx.open { display:block; }
+.ctx-item { padding:8px 12px; font-size:13px; border-radius:4px; cursor:pointer; display:flex; align-items:center; gap:8px; transition:background .1s; }
+.ctx-item:hover { background:var(--surf2); }
+.ctx-item.danger { color:var(--red); }
+.ctx-item.danger:hover { background:rgba(232,84,74,.1); }
+.ctx-div { height:1px; background:var(--bdr); margin:3px 0; }
+
+/* ─ TOOLTIP ─ */
+.tip { position:fixed; background:var(--surf); border:1px solid var(--bdr); border-radius:8px; padding:10px 14px; z-index:250; pointer-events:none; font-size:12px; box-shadow:var(--shad); display:none; min-width:190px; }
+.tip.on { display:block; }
+.tip-id  { font-family:'JetBrains Mono',monospace; font-size:14px; font-weight:700; margin-bottom:5px; }
+.tip-row { color:var(--muted); margin-top:3px; }
+.tip-row span { color:var(--text); }
+
+/* ─ SETUP ─ */
+.setup { position:fixed; inset:0; background:var(--bg); display:flex; align-items:center; justify-content:center; z-index:500; }
+.setup-card { background:var(--surf); border:1px solid var(--bdr); border-radius:14px; padding:32px; width:500px; max-width:95vw; box-shadow:var(--shad); }
+.setup-title { font-family:'Bebas Neue',cursive; font-size:26px; letter-spacing:4px; color:var(--acc); margin-bottom:5px; }
+.setup-sub { font-size:13px; color:var(--muted); line-height:1.7; margin-bottom:20px; }
+.steps { background:var(--surf2); border:1px solid var(--bdr); border-radius:8px; padding:14px 16px; margin-bottom:18px; font-size:12px; color:var(--muted); line-height:2.2; }
+.steps b { color:var(--acc); }
+.setup-url input { width:100%; background:#111920; border:1px solid var(--bdr); border-radius:6px; padding:10px 12px; font-size:13px; color:var(--text); font-family:'JetBrains Mono',monospace; outline:none; margin-bottom:6px; }
+.setup-url input:focus { border-color:var(--acc); }
+.setup-err { font-size:12px; color:var(--red); margin-bottom:10px; min-height:18px; white-space:pre-wrap; }
+.setup-btns { display:flex; gap:10px; }
+</style>
+</head>
+<body>
+
+<!-- ══ SETUP ══════════════════════════════════════════════════ -->
+<div class="setup" id="setup">
+  <div class="setup-card">
+    <div class="setup-title">YARD MGR</div>
+    <div class="setup-sub">Google スプレッドシートと連携します。<br>初回のみ GAS URL の設定が必要です。</div>
+    <div class="steps">
+      <b>① gas-backend.js をスプレッドシートの Apps Script に貼り付けて保存</b><br>
+      <b>② 「デプロイ」→「新しいデプロイ」→ 種類: ウェブアプリ</b><br>
+      &nbsp;&nbsp;&nbsp;実行ユーザー: 自分 ／ アクセス: <b style="color:#fff">全員</b><br>
+      <b>③ 承認後に表示された URL を下に貼り付け</b>
+    </div>
+    <div class="setup-url">
+      <input id="gas-url" placeholder="https://script.google.com/macros/s/…/exec">
+    </div>
+    <div class="setup-err" id="setup-err"></div>
+    <div class="setup-btns">
+      <button class="btn btn-acc" onclick="connectGAS()" style="flex:1;justify-content:center;">接続して起動</button>
+      <button class="btn btn-ghost" onclick="demoMode()">デモで試す</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ HEADER ═════════════════════════════════════════════════ -->
+<header class="hdr">
+  <div class="logo">YARD MGR <em>v3</em></div>
+  <div class="chip"><div class="dot" style="background:var(--blue)"></div>在庫 <b id="s-total">0</b></div>
+  <div class="chip"><div class="dot" style="background:var(--green)"></div>出庫待 <b id="s-ready">0</b></div>
+  <div class="chip"><div class="dot" style="background:var(--red)"></div>整備中 <b id="s-maint">0</b></div>
+  <div class="chip"><div class="dot" style="background:var(--acc)"></div>入庫待 <b id="s-wait">0</b></div>
+  <div class="sync-area">
+    <div class="sync-led" id="sync-led"></div>
+    <span id="sync-txt">待機中</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:4px;background:var(--surf2);border:1px solid var(--bdr);border-radius:6px;padding:2px 6px;margin-left:4px;">
+    <button class="btn btn-ghost" onclick="zoomBy(-0.1)" style="padding:2px 8px;font-size:15px;border:none;min-width:28px;">−</button>
+    <span id="zoom-label" style="font-family:'JetBrains Mono',monospace;font-size:12px;min-width:40px;text-align:center;color:var(--text);">100%</span>
+    <button class="btn btn-ghost" onclick="zoomBy(+0.1)" style="padding:2px 8px;font-size:15px;border:none;min-width:28px;">＋</button>
+    <button class="btn btn-ghost" onclick="zoomReset()" style="padding:2px 8px;font-size:11px;border:none;color:var(--muted);" title="ズームリセット">⟳</button>
+  </div>
+  <div style="display:flex;align-items:center;gap:5px;background:var(--surf2);border:1px solid var(--bdr);border-radius:6px;padding:3px 8px;font-size:11px;color:var(--muted);">
+    <span>W</span>
+    <input id="cv-w" type="number" value="6000" min="1000" max="30000" step="500"
+      style="width:62px;background:transparent;border:none;outline:none;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text);text-align:right;"
+      onchange="resizeCanvas()">
+    <span>×</span>
+    <span>H</span>
+    <input id="cv-h" type="number" value="4000" min="1000" max="30000" step="500"
+      style="width:62px;background:transparent;border:none;outline:none;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text);text-align:right;"
+      onchange="resizeCanvas()">
+    <span style="font-size:10px;">px</span>
+  </div>
+  <button class="btn btn-ghost" onclick="openYardModal(null)">＋ ヤード追加</button>
+  <button class="btn btn-acc"   onclick="openVehicleModal(null)">＋ 車両登録</button>
+</header>
+
+<!-- ══ BODY ═══════════════════════════════════════════════════ -->
+<div class="body-wrap">
+  <aside class="sidebar">
+    <div class="sb-sec">
+      <div class="sb-ttl">検索</div>
+      <div class="search-box">
+        <span class="ico">🔍</span>
+        <input id="search" placeholder="ナンバー・形状で検索…" oninput="renderSidebar()">
+      </div>
+    </div>
+    <div class="sb-sec grow">
+      <div class="sb-ttl">車両一覧 <span id="vcount" style="font-weight:400;color:var(--muted)"></span></div>
+      <div class="vscroll" id="vlist"></div>
+    </div>
+    <div class="sb-sec">
+      <div class="sb-ttl">凡例</div>
+      <div class="leg-row"><div class="dot" style="background:var(--green)"></div>出庫待ち</div>
+      <div class="leg-row"><div class="dot" style="background:var(--acc)"></div>入庫待ち</div>
+      <div class="leg-row"><div class="dot" style="background:var(--red)"></div>整備中</div>
+      <div class="leg-row"><div class="dot" style="background:var(--blue)"></div>在庫</div>
+    </div>
+    <div class="sb-foot" id="sb-foot">—</div>
+  </aside>
+
+  <div class="canvas-wrap" id="canvas-wrap">
+    <div class="canvas-scaler" id="canvas-scaler">
+      <div class="yard-cv" id="canvas">
+        <!-- SVGゾーンレイヤー -->
+        <svg class="zone-svg" id="zone-svg"></svg>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ BOTTOM BAR ═════════════════════════════════════════════ -->
+<div class="bbar">
+  <span>ヤード: <span id="b-yards">0</span></span>
+  <span>車両: <span id="b-veh">0</span></span>
+  <span style="margin-left:auto;color:var(--muted);font-size:10px;">
+    ヤード名をドラッグ: 移動 ／ ヤード名右の ✎: 形状編集 ／ 右クリック: 車両メニュー
+  </span>
+</div>
+
+<!-- ══ VEHICLE MODAL ══════════════════════════════════════════ -->
+<div class="overlay" id="ov-v">
+  <div class="modal">
+    <div class="modal-title" id="vm-title">車両登録</div>
+    <div class="field"><label>車両番号 / ナンバー ＊</label><input id="vm-number" placeholder="例: 品川 300 あ 1234"></div>
+    <div class="field"><label>形状（自由入力）</label><input id="vm-shape" placeholder="例: セダン、バン、2tトラック"></div>
+    <div class="field"><label>ステータス</label>
+      <select id="vm-status">
+        <option value="inyard">在庫</option><option value="ready">出庫待ち</option>
+        <option value="waiting">入庫待ち</option><option value="maintenance">整備中</option>
+      </select>
+    </div>
+    <div class="field"><label>入庫日時</label><input id="vm-date" type="datetime-local"></div>
+    <div class="field"><label>配置ヤード</label><select id="vm-yard"></select></div>
+    <div class="field"><label>マグネットカラー</label><div class="color-row" id="vm-colors"></div></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeOv('ov-v')">キャンセル</button>
+      <button class="btn btn-acc" onclick="submitVehicle()" id="vm-btn">登録</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ YARD MODAL ════════════════════════════════════════════ -->
+<div class="overlay" id="ov-y">
+  <div class="modal">
+    <div class="modal-title" id="ym-title">ヤード追加</div>
+    <div class="field"><label>ヤード名 ＊</label><input id="ym-name" placeholder="例: Aエリア、整備ゾーン"></div>
+    <div class="field"><label>ゾーンカラー</label><div class="color-row" id="ym-colors"></div></div>
+
+    <div class="field">
+      <label>セルサイズ（px）</label>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <input id="ym-cell" type="number" value="80" min="40" max="200" style="width:80px;">
+        <span style="font-size:11px;color:var(--muted)">1マスの大きさ（車両1台分の目安）</span>
+      </div>
+    </div>
+
+    <!-- グリッドエディタ -->
+    <div class="field">
+      <label>ヤード形状（マスをクリックして ON/OFF）</label>
+      <div class="grid-editor-wrap">
+        <div class="grid-editor-hint">
+          🖱 クリック: マスON/OFF ／ ドラッグ: 複数まとめて切替<br>
+          黄色のマス = ヤードの有効エリア
+        </div>
+        <div class="grid-size-row">
+          <label>列</label>
+          <input id="ym-cols" type="number" value="6" min="1" max="50" oninput="rebuildGrid()">
+          <label>行</label>
+          <input id="ym-rows" type="number" value="4" min="1" max="50" oninput="rebuildGrid()">
+          <div class="grid-preset-row" style="margin:0;">
+            <div class="preset-btn" onclick="applyPreset('all')">全ON</div>
+            <div class="preset-btn" onclick="applyPreset('clear')">全OFF</div>
+            <div class="preset-btn" onclick="applyPreset('L')">L字</div>
+            <div class="preset-btn" onclick="applyPreset('T')">T字</div>
+            <div class="preset-btn" onclick="applyPreset('U')">U字</div>
+          </div>
+        </div>
+        <div id="grid-cells"></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:8px;">
+          有効マス: <b id="cell-count" style="color:var(--acc)">0</b> 個
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-actions" id="ym-acts"></div>
+  </div>
+</div>
+
+<!-- ══ CTX MENU ══════════════════════════════════════════════ -->
+<div class="ctx" id="ctx">
+  <div class="ctx-item" onclick="ctxEdit()">✏️ 編集</div>
+  <div class="ctx-div"></div>
+  <div class="ctx-item" onclick="ctxSt('ready')">  <span style="color:var(--green)">●</span> 出庫待ちに変更</div>
+  <div class="ctx-item" onclick="ctxSt('inyard')"> <span style="color:var(--blue)">●</span> 在庫に変更</div>
+  <div class="ctx-item" onclick="ctxSt('waiting')"><span style="color:var(--acc)">●</span> 入庫待ちに変更</div>
+  <div class="ctx-item" onclick="ctxSt('maintenance')"><span style="color:var(--red)">●</span> 整備中に変更</div>
+  <div class="ctx-div"></div>
+  <div class="ctx-item danger" onclick="ctxDel()">🗑 削除</div>
+</div>
+
+<!-- ══ TOOLTIP ═══════════════════════════════════════════════ -->
+<div class="tip" id="tip">
+  <div class="tip-id" id="t-id"></div>
+  <div class="tip-row">形状: <span id="t-shape"></span></div>
+  <div class="tip-row">入庫: <span id="t-date"></span></div>
+  <div class="tip-row">ステータス: <span id="t-status"></span></div>
+  <div class="tip-row">ヤード: <span id="t-yard"></span></div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════════════════════
+let GAS_URL  = '', IS_DEMO = false;
+let vehicles = [], yards = [];
+let nextVId  = 1,  nextYId = 1;
+let editVId  = null, editYId = null, ctxVId = null;
+let vmColor  = '#4da8da', ymColorI = 0;
+let dragInfo = null;   // 車両ドラッグ
+let yardDrag = null;   // ヤード移動ドラッグ
+
+// ── ズーム/パン ──────────────────────────────────────────────
+let vZoom    = 1.0;    // 現在のズーム倍率
+let vPanX    = 0;      // キャンバス原点のオフセットX(px)
+let vPanY    = 0;      // キャンバス原点のオフセットY(px)
+let spaceHeld = false; // Spaceキー押下中フラグ
+let panDrag  = null;   // パン中の開始情報
+
+// グリッドエディタ状態
+let gridCols   = 6, gridRows = 4;
+let gridCells  = new Set();   // ONのインデックス集合
+let gridPainting = null;      // ドラッグ中のON/OFF値
+
+const V_COLORS = ['#4da8da','#52c97a','#f5a623','#e8544a','#b07eea','#f0845a','#50c8c8','#f0c040'];
+const Z_BG = ['rgba(77,168,218,.10)','rgba(82,201,122,.10)','rgba(245,166,35,.10)',
+              'rgba(232,84,74,.10)','rgba(176,126,234,.10)','rgba(240,132,90,.10)'];
+const Z_BD = ['rgba(77,168,218,.5)','rgba(82,201,122,.5)','rgba(245,166,35,.5)',
+              'rgba(232,84,74,.5)','rgba(176,126,234,.5)','rgba(240,132,90,.5)'];
+const Z_FILL = ['rgba(77,168,218,.18)','rgba(82,201,122,.18)','rgba(245,166,35,.18)',
+                'rgba(232,84,74,.18)','rgba(176,126,234,.18)','rgba(240,132,90,.18)'];
+const ST = {
+  inyard:      { label:'在庫',     c:'#4da8da', bg:'rgba(77,168,218,.18)' },
+  ready:       { label:'出庫待ち', c:'#52c97a', bg:'rgba(82,201,122,.18)' },
+  waiting:     { label:'入庫待ち', c:'#f5a623', bg:'rgba(245,166,35,.18)' },
+  maintenance: { label:'整備中',   c:'#e8544a', bg:'rgba(232,84,74,.18)'  },
+};
+
+// ════════════════════════════════════════════════════════════
+//  SETUP
+// ════════════════════════════════════════════════════════════
+async function connectGAS() {
+  const url = document.getElementById('gas-url').value.trim();
+  if (!url.startsWith('https://script.google.com')) { setErr('正しい GAS URL を入力してください'); return; }
+  GAS_URL = url; setErr('');
+  try {
+    await gasRead();
+    localStorage.setItem('yard_gas_url', GAS_URL);
+    hideSetup(); setSb('🔗 GAS接続中');
+  } catch(e) { setErr('接続エラー: ' + e.message); }
+}
+function demoMode() { IS_DEMO=true; loadDemo(); hideSetup(); setSb('📋 デモモード'); }
+function setErr(m) { document.getElementById('setup-err').textContent = m; }
+function hideSetup() { document.getElementById('setup').style.display='none'; initPickers(); }
+function setSb(m)    { document.getElementById('sb-foot').textContent = m; }
+
+// ════════════════════════════════════════════════════════════
+//  GAS JSONP通信
+// ════════════════════════════════════════════════════════════
+let cbN = 0;
+function gasJsonp(params) {
+  return new Promise((res, rej) => {
+    const cb = '__gcb' + (++cbN);
+    const url = new URL(GAS_URL);
+    Object.entries(params).forEach(([k,v]) => url.searchParams.set(k, v));
+    url.searchParams.set('callback', cb);
+    const timer = setTimeout(() => { delete window[cb]; sc.remove(); rej(new Error('タイムアウト')); }, 12000);
+    window[cb] = (data) => { clearTimeout(timer); delete window[cb]; sc.remove(); data.error ? rej(new Error(data.error)) : res(data); };
+    const sc = document.createElement('script');
+    sc.src = url.toString();
+    sc.onerror = () => { clearTimeout(timer); delete window[cb]; rej(new Error('スクリプト読込エラー')); };
+    document.head.appendChild(sc);
+  });
+}
+function setSyncLed(s) {
+  const led = document.getElementById('sync-led');
+  const txt = document.getElementById('sync-txt');
+  led.className = 'sync-led' + (s==='busy'?' busy':s==='error'?' error':'');
+  txt.textContent = s==='ok' ? '同期済 '+new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',second:'2-digit'})
+                  : s==='busy' ? '同期中…' : '同期エラー';
+}
+async function gasRead() {
+  setSyncLed('busy');
+  const d = await gasJsonp({ action:'read' });
+  vehicles = d.vehicles || [];
+  yards    = d.yards    || [];
+  nextVId  = vehicles.length ? Math.max(...vehicles.map(v=>+v.id||0))+1 : 1;
+  nextYId  = yards.length    ? Math.max(...yards.map(y=>+y.id||0))+1    : 1;
+  // settings からキャンバスサイズを復元
+  if (d.settings) applySettingsFromGAS(d.settings);
+  setSyncLed('ok');
+  render();
+}
+async function gasCall(params) {
+  if (IS_DEMO) { return; }  // デモ時は呼び出し元で既にrender()済み
+  setSyncLed('busy');
+  try { await gasJsonp(params); setSyncLed('ok'); }
+  catch(e) { setSyncLed('error'); console.error(e); }
+}
+
+// ════════════════════════════════════════════════════════════
+//  DEMO DATA
+// ════════════════════════════════════════════════════════════
+function loadDemo() {
+  // cells: 全ONの6×4グリッド
+  function allOn(cols, rows) {
+    return Array.from({length:cols*rows},(_,i)=>i).join(',');
+  }
+  // L字: 6×4で右上2×2をOFF
+  function Lshape(cols, rows) {
+    const on=[];
+    for(let r=0;r<rows;r++) for(let c=0;c<cols;c++) {
+      if(!(r<2 && c>=4)) on.push(r*cols+c);
+    }
+    return on.join(',');
+  }
+  yards = [
+    { id:1, name:'Aエリア',    x:40,  y:40,  cellSize:'80', cols:'6', rows:'4', cells:allOn(6,4), colorIdx:'0' },
+    { id:2, name:'整備エリア', x:40,  y:420, cellSize:'80', cols:'4', rows:'3', cells:Lshape(4,3), colorIdx:'3' },
+    { id:3, name:'出庫待ち',   x:560, y:40,  cellSize:'80', cols:'5', rows:'3', cells:allOn(5,3), colorIdx:'1' },
+  ];
+  vehicles = [
+    { id:1, number:'品川300あ1234', shape:'セダン',     status:'inyard',      color:'#4da8da', date:'2025-03-01T09:00', yardId:'1', x:60,  y:100 },
+    { id:2, number:'横浜500め5678', shape:'バン',       status:'ready',       color:'#52c97a', date:'2025-03-05T14:30', yardId:'3', x:580, y:100 },
+    { id:3, number:'千葉400ら9012', shape:'2tトラック', status:'maintenance', color:'#e8544a', date:'2025-03-08T10:15', yardId:'2', x:60,  y:480 },
+    { id:4, number:'大阪330ぬ3456', shape:'軽自動車',   status:'waiting',     color:'#f5a623', date:'2025-03-10T08:00', yardId:'1', x:200, y:100 },
+    { id:5, number:'名古屋200け78', shape:'SUV',        status:'inyard',      color:'#b07eea', date:'2025-03-03T11:00', yardId:'1', x:340, y:100 },
+  ];
+  nextVId=6; nextYId=4; render();
+}
+
+// ════════════════════════════════════════════════════════════
+//  YARD 形状ユーティリティ
+// ════════════════════════════════════════════════════════════
+function parseCells(cellsStr) {
+  if (!cellsStr) return new Set();
+  return new Set(String(cellsStr).split(',').map(Number).filter(n=>!isNaN(n)));
+}
+
+// ヤードのSVGパスを生成（ON状態のセルを結合して輪郭を描く）
+function buildYardPath(y) {
+  const cols     = parseInt(y.cols) || 6;
+  const rows     = parseInt(y.rows) || 4;
+  const cell     = parseInt(y.cellSize) || 80;
+  const onCells  = parseCells(y.cells);
+  const ox = parseInt(y.x) || 0;
+  const oy = parseInt(y.y) || 0;
+
+  // 各セルを個別の矩形として描く（シンプルな方法）
+  let paths = '';
+  for (let r=0; r<rows; r++) {
+    for (let c=0; c<cols; c++) {
+      const idx = r*cols+c;
+      if (!onCells.has(idx)) continue;
+      const cx = ox + c*cell, cy = oy + r*cell;
+      // 角丸処理: 隣接するONセルの方向を見て角丸を制御
+      const hasTop    = r>0      && onCells.has((r-1)*cols+c);
+      const hasBot    = r<rows-1 && onCells.has((r+1)*cols+c);
+      const hasLeft   = c>0      && onCells.has(r*cols+(c-1));
+      const hasRight  = c<cols-1 && onCells.has(r*cols+(c+1));
+      const rx = 6;
+      // シンプルに矩形でよい（間の境界は後で塗りつぶし）
+      paths += `M${cx+rx},${cy} L${cx+cell-rx},${cy} Q${cx+cell},${cy} ${cx+cell},${cy+rx} L${cx+cell},${cy+cell-rx} Q${cx+cell},${cy+cell} ${cx+cell-rx},${cy+cell} L${cx+rx},${cy+cell} Q${cx},${cy+cell} ${cx},${cy+cell-rx} L${cx},${cy+rx} Q${cx},${cy} ${cx+rx},${cy} Z `;
+    }
+  }
+  return paths;
+}
+
+// ヤードの境界ボックス（ラベル位置用）
+function yardBBox(y) {
+  const cols = parseInt(y.cols)||6, rows = parseInt(y.rows)||4;
+  const cell = parseInt(y.cellSize)||80;
+  const on   = parseCells(y.cells);
+  if (on.size === 0) return { x:+y.x, y:+y.y, w:cell*cols, h:cell*rows };
+  let minC=cols, maxC=0, minR=rows, maxR=0;
+  on.forEach(idx => {
+    const r=Math.floor(idx/cols), c=idx%cols;
+    minC=Math.min(minC,c); maxC=Math.max(maxC,c);
+    minR=Math.min(minR,r); maxR=Math.max(maxR,r);
+  });
+  return {
+    x: +y.x + minC*cell, y: +y.y + minR*cell,
+    w: (maxC-minC+1)*cell, h: (maxR-minR+1)*cell
+  };
+}
+
+// ════════════════════════════════════════════════════════════
+//  RENDER
+// ════════════════════════════════════════════════════════════
+function render() {
+  renderZones();
+  renderMagnets();
+  renderSidebar();
+  updateStats();
+}
+
+// ── ゾーン（SVG + HTMLハンドル） ─────────────────────────────
+function renderZones() {
+  const svg    = document.getElementById('zone-svg');
+  const canvas = document.getElementById('canvas');
+
+  // 既存ハンドル削除
+  canvas.querySelectorAll('.zone-handle').forEach(e=>e.remove());
+  svg.innerHTML = '';
+
+  const defs = document.createElementNS('http://www.w3.org/2000/svg','defs');
+  svg.appendChild(defs);
+
+  yards.forEach(y => {
+    const ci    = parseInt(y.colorIdx) % Z_BG.length;
+    const pathD = buildYardPath(y);
+    if (!pathD) return;
+
+    // SVG: 塗り
+    const pathFill = document.createElementNS('http://www.w3.org/2000/svg','path');
+    pathFill.setAttribute('d', pathD);
+    pathFill.setAttribute('fill', Z_FILL[ci]);
+    pathFill.setAttribute('stroke', Z_BD[ci]);
+    pathFill.setAttribute('stroke-width', '2');
+    pathFill.setAttribute('stroke-dasharray', '8 4');
+    pathFill.setAttribute('stroke-linejoin', 'round');
+    svg.appendChild(pathFill);
+
+    // HTML: ドラッグハンドル（ラベル）
+    const bbox  = yardBBox(y);
+    const handle = document.createElement('div');
+    handle.className = 'zone-handle';
+    handle.id = 'zh-' + y.id;
+    handle.style.cssText = `left:${bbox.x+6}px; top:${bbox.y+4}px; color:${Z_BD[ci]};`;
+    handle.innerHTML = `<span class="zh-icon">⠿</span><span class="zh-name">${y.name}</span><span class="zh-editbtn" title="形状編集">✎</span>`;
+
+    // ラベルドラッグ → ヤード移動（Space中はパンを優先）
+    handle.addEventListener('mousedown', e => {
+      if (e.target.classList.contains('zh-editbtn')) return;
+      if (e.button !== 0) return;
+      if (spaceHeld) return;  // Space中はキャンバスパン優先
+      e.preventDefault(); e.stopPropagation();
+      startYardDrag(e, y.id);
+    });
+
+    // 編集ボタン
+    handle.querySelector('.zh-editbtn').addEventListener('click', e => {
+      e.stopPropagation();
+      openYardModal(y.id);
+    });
+
+    canvas.appendChild(handle);
+  });
+}
+
+// ── ヤードドラッグ移動 ─────────────────────────────────────────
+function startYardDrag(e, yid) {
+  const y = yards.find(x=>x.id==yid);
+  if (!y) return;
+  // ズーム考慮: スクリーン座標→キャンバス座標に変換
+  const startCV = screenToCanvas(e.clientX, e.clientY);
+  const offX    = startCV.x - +y.x;
+  const offY    = startCV.y - +y.y;
+
+  const handle = document.getElementById('zh-' + yid);
+  if (handle) handle.classList.add('editing');
+  hideTip();
+  yardDrag = { yid, offX, offY };
+
+  function onMove(ev) {
+    const cv = screenToCanvas(ev.clientX, ev.clientY);
+    const nx = clamp(cv.x - yardDrag.offX, 0, CV_W-40);
+    const ny = clamp(cv.y - yardDrag.offY, 0, CV_H-40);
+    y.x = Math.round(nx);
+    y.y = Math.round(ny);
+    renderZones();  // リアルタイム更新
+  }
+
+  function onUp() {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup',   onUp);
+    const handle2 = document.getElementById('zh-'+yid);
+    if (handle2) handle2.classList.remove('editing');
+    yardDrag = null;
+    // GAS同期
+    gasCall({ action:'upsertYard', data: JSON.stringify(y) });
+    render();
+  }
+
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup',   onUp);
+}
+
+// ── マグネット描画 ─────────────────────────────────────────────
+function renderMagnets() {
+  const canvas = document.getElementById('canvas');
+  canvas.querySelectorAll('.magnet').forEach(e=>e.remove());
+  vehicles.forEach(v => canvas.appendChild(makeMagnet(v)));
+}
+
+function makeMagnet(v) {
+  const st = ST[v.status] || ST.inyard;
+  const el = document.createElement('div');
+  el.className = 'magnet'; el.id = 'mag-'+v.id;
+  el.style.left        = (+v.x||60) + 'px';
+  el.style.top         = (+v.y||60) + 'px';
+  el.style.borderColor = v.color;
+  el.style.background  = hexA(v.color, .14);
+  el.style.color       = v.color;
+  el.innerHTML = `
+    <div class="m-num">${v.number}</div>
+    ${v.shape?`<div class="m-shape">${v.shape}</div>`:''}
+    <div class="m-dot" style="background:${st.c}"></div>`;
+  el.addEventListener('mousedown', e => { if(e.button===0){e.preventDefault();e.stopPropagation();startVehicleDrag(e,v.id);} });
+  el.addEventListener('contextmenu', e => { e.preventDefault(); showCtx(e,v.id); });
+  el.addEventListener('mouseenter',  e => showTip(e,v));
+  el.addEventListener('mouseleave',  hideTip);
+  return el;
+}
+
+// ════════════════════════════════════════════════════════════
+//  車両ドラッグ
+// ════════════════════════════════════════════════════════════
+function startVehicleDrag(e, vid) {
+  // Space+ドラッグはパン操作なので車両ドラッグを無効化
+  if (spaceHeld) return;
+  const v = vehicles.find(x=>x.id==vid);
+  if (!v) return;
+  const el = document.getElementById('mag-'+vid);
+  // ズーム考慮: スクリーン→キャンバス座標
+  const startCV = screenToCanvas(e.clientX, e.clientY);
+  const offX    = startCV.x - (+v.x||0);
+  const offY    = startCV.y - (+v.y||0);
+  el.classList.add('is-dragging');
+  hideTip();
+  dragInfo = { vid, offX, offY };
+
+  function onMove(ev) {
+    const cv = screenToCanvas(ev.clientX, ev.clientY);
+    const nx = clamp(cv.x - dragInfo.offX, 0, CV_W-96);
+    const ny = clamp(cv.y - dragInfo.offY, 0, CV_H-52);
+    el.style.left = nx+'px'; el.style.top = ny+'px';
+  }
+  function onUp(ev) {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup',   onUp);
+    const cv = screenToCanvas(ev.clientX, ev.clientY);
+    const nx = clamp(cv.x - dragInfo.offX, 0, CV_W-96);
+    const ny = clamp(cv.y - dragInfo.offY, 0, CV_H-52);
+    el.classList.remove('is-dragging');
+    dragInfo = null;
+
+    // どのヤードに入ったか判定（ONセルに重なっているか）
+    const cx = Math.round(nx)+48, cy = Math.round(ny)+26;  // マグネット中心
+    const hit = yards.find(y => isPointInYard(cx, cy, y));
+    v.x = Math.round(nx); v.y = Math.round(ny);
+    v.yardId = hit ? String(hit.id) : '';
+    gasCall({ action:'moveVehicle', id:String(v.id), x:String(v.x), y:String(v.y), yardId:v.yardId });
+    renderSidebar(); updateStats();
+  }
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup',   onUp);
+}
+
+// 点がヤードのONセル内にあるか
+function isPointInYard(px, py, y) {
+  const cols = parseInt(y.cols)||6, rows=parseInt(y.rows)||4, cell=parseInt(y.cellSize)||80;
+  const ox=+y.x, oy=+y.y;
+  const on=parseCells(y.cells);
+  // どのセルに入るか
+  const c = Math.floor((px-ox)/cell);
+  const r = Math.floor((py-oy)/cell);
+  if (c<0||c>=cols||r<0||r>=rows) return false;
+  return on.has(r*cols+c);
+}
+
+// ════════════════════════════════════════════════════════════
+//  SIDEBAR & STATS
+// ════════════════════════════════════════════════════════════
+function renderSidebar() {
+  const q    = document.getElementById('search').value.toLowerCase();
+  const filt = vehicles.filter(v=>v.number.toLowerCase().includes(q)||(v.shape||'').toLowerCase().includes(q));
+  document.getElementById('vcount').textContent = '('+filt.length+')';
+  document.getElementById('vlist').innerHTML = filt.map(v => {
+    const st = ST[v.status]||ST.inyard;
+    const y  = yards.find(y=>String(y.id)===String(v.yardId));
+    return `<div class="vi" onclick="hiV(${v.id})">
+      <div class="vi-bar" style="background:${v.color}"></div>
+      <div class="vi-info">
+        <div class="vi-num">${v.number}</div>
+        <div class="vi-sub">${v.shape||'—'}${y?' ・ '+y.name:''}</div>
+      </div>
+      <div class="vi-badge" style="background:${st.bg};color:${st.c};border:1px solid ${st.c}44">${st.label}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('b-yards').textContent = yards.length;
+  document.getElementById('b-veh').textContent   = vehicles.length;
+}
+function updateStats() {
+  document.getElementById('s-total').textContent = vehicles.length;
+  document.getElementById('s-ready').textContent = vehicles.filter(v=>v.status==='ready').length;
+  document.getElementById('s-maint').textContent = vehicles.filter(v=>v.status==='maintenance').length;
+  document.getElementById('s-wait').textContent  = vehicles.filter(v=>v.status==='waiting').length;
+}
+function hiV(vid) {
+  const el = document.getElementById('mag-'+vid);
+  if (!el) return;
+  el.classList.remove('hi'); void el.offsetWidth; el.classList.add('hi');
+  el.scrollIntoView({behavior:'smooth',block:'center',inline:'center'});
+}
+
+// ════════════════════════════════════════════════════════════
+//  VEHICLE MODAL
+// ════════════════════════════════════════════════════════════
+function openVehicleModal(vid) {
+  editVId = vid;
+  const v = vid!==null ? vehicles.find(x=>x.id==vid) : null;
+  const now = new Date(); now.setMinutes(now.getMinutes()-now.getTimezoneOffset());
+  document.getElementById('vm-title').textContent = v?'車両編集':'車両登録';
+  document.getElementById('vm-btn').textContent   = v?'保存':'登録';
+  document.getElementById('vm-number').value = v?v.number:'';
+  document.getElementById('vm-shape').value  = v?(v.shape||''):'';
+  document.getElementById('vm-status').value = v?v.status:'inyard';
+  document.getElementById('vm-date').value   = v?(v.date||''):now.toISOString().slice(0,16);
+  vmColor = v?v.color:V_COLORS[0];
+  buildColorRow('vm-colors', V_COLORS, vmColor, c=>vmColor=c);
+  populateYardSel('vm-yard', v?.yardId||'');
+  openOv('ov-v');
+}
+async function submitVehicle() {
+  const num = document.getElementById('vm-number').value.trim();
+  if (!num) { alert('車両番号を入力してください'); return; }
+  if (editVId!==null) {
+    const v = vehicles.find(x=>x.id==editVId);
+    Object.assign(v,{ number:num, shape:document.getElementById('vm-shape').value.trim(),
+      status:document.getElementById('vm-status').value, date:document.getElementById('vm-date').value,
+      yardId:document.getElementById('vm-yard').value, color:vmColor });
+    closeOv('ov-v'); render();
+    await gasCall({ action:'upsertVehicle', data:JSON.stringify(v) });
+  } else {
+    const yid=document.getElementById('vm-yard').value;
+    const y=yards.find(y=>String(y.id)===yid);
+    const v={ id:nextVId++, number:num, shape:document.getElementById('vm-shape').value.trim(),
+      status:document.getElementById('vm-status').value, date:document.getElementById('vm-date').value,
+      color:vmColor, yardId:yid, x:y?Math.round(+y.x+20):80, y:y?Math.round(+y.y+46):80 };
+    vehicles.push(v); closeOv('ov-v'); render();
+    await gasCall({ action:'upsertVehicle', data:JSON.stringify(v) });
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  YARD MODAL + グリッドエディタ
+// ════════════════════════════════════════════════════════════
+function openYardModal(yid) {
+  editYId = yid;
+  const y = yid!==null ? yards.find(y=>y.id==yid) : null;
+  document.getElementById('ym-title').textContent = y?'ヤード編集':'ヤード追加';
+  document.getElementById('ym-name').value  = y?y.name:'';
+  document.getElementById('ym-cell').value  = y?(+y.cellSize||80):80;
+  ymColorI = y?(+y.colorIdx||0):0;
+  buildColorRow('ym-colors', Z_BD, Z_BD[ymColorI], (c,i)=>ymColorI=i);
+
+  // グリッドエディタ初期化
+  gridCols = y?(+y.cols||6):6;
+  gridRows = y?(+y.rows||4):4;
+  gridCells = y ? parseCells(y.cells) : defaultAllOn(gridCols, gridRows);
+
+  document.getElementById('ym-cols').value = gridCols;
+  document.getElementById('ym-rows').value = gridRows;
+
+  // グリッドのカラーをヤードカラーに合わせる
+  updateGridColor();
+  rebuildGrid();
+
+  // アクションボタン
+  const acts = document.getElementById('ym-acts');
+  acts.innerHTML = '';
+  if (y) {
+    const d=document.createElement('button'); d.className='btn btn-danger'; d.style.marginRight='auto';
+    d.textContent='削除'; d.onclick=deleteYard; acts.appendChild(d);
+  }
+  const bc=document.createElement('button'); bc.className='btn btn-ghost'; bc.textContent='キャンセル'; bc.onclick=()=>closeOv('ov-y'); acts.appendChild(bc);
+  const bs=document.createElement('button'); bs.className='btn btn-acc'; bs.textContent=y?'保存':'追加'; bs.onclick=submitYard; acts.appendChild(bs);
+
+  openOv('ov-y');
+}
+
+function defaultAllOn(cols, rows) {
+  const s=new Set();
+  for(let i=0;i<cols*rows;i++) s.add(i);
+  return s;
+}
+
+function updateGridColor() {
+  const root = document.getElementById('grid-cells');
+  root.style.setProperty('--zone-bg', Z_FILL[ymColorI % Z_FILL.length]);
+  root.style.setProperty('--zone-bd', Z_BD[ymColorI   % Z_BD.length]);
+}
+
+function rebuildGrid() {
+  gridCols = Math.max(1, Math.min(50, +document.getElementById('ym-cols').value||6));
+  gridRows = Math.max(1, Math.min(50, +document.getElementById('ym-rows').value||4));
+  document.getElementById('ym-cols').value = gridCols;
+  document.getElementById('ym-rows').value = gridRows;
+
+  const container = document.getElementById('grid-cells');
+  container.style.gridTemplateColumns = `repeat(${gridCols}, 34px)`;
+  container.innerHTML = '';
+
+  for (let r=0; r<gridRows; r++) {
+    for (let c=0; c<gridCols; c++) {
+      const idx = r*gridCols+c;
+      const cell = document.createElement('div');
+      cell.className = 'gcell' + (gridCells.has(idx)?' on':'');
+      cell.dataset.idx = idx;
+
+      // クリック
+      cell.addEventListener('mousedown', e => {
+        e.preventDefault();
+        gridPainting = !gridCells.has(idx);  // 現在の逆にする
+        toggleCell(idx, cell);
+      });
+      cell.addEventListener('mouseenter', e => {
+        if (gridPainting !== null) toggleCell(idx, cell, gridPainting);
+      });
+
+      container.appendChild(cell);
+    }
+  }
+  updateCellCount();
+}
+
+function toggleCell(idx, cellEl, forceTo) {
+  const newVal = forceTo !== undefined ? forceTo : !gridCells.has(idx);
+  if (newVal) gridCells.add(idx); else gridCells.delete(idx);
+  cellEl.classList.toggle('on', newVal);
+  updateCellCount();
+}
+
+document.addEventListener('mouseup', () => { gridPainting = null; });
+
+function updateCellCount() {
+  document.getElementById('cell-count').textContent = gridCells.size;
+}
+
+function applyPreset(type) {
+  gridCols = +document.getElementById('ym-cols').value || 6;
+  gridRows = +document.getElementById('ym-rows').value || 4;
+  gridCells = new Set();
+  const total = gridCols * gridRows;
+
+  if (type === 'all') {
+    for(let i=0;i<total;i++) gridCells.add(i);
+  } else if (type === 'clear') {
+    // 空
+  } else if (type === 'L') {
+    // 左列全部 + 下段全部
+    for(let r=0;r<gridRows;r++) gridCells.add(r*gridCols);   // 左端列
+    for(let c=0;c<gridCols;c++) gridCells.add((gridRows-1)*gridCols+c); // 最下行
+  } else if (type === 'T') {
+    // 上段全部 + 中央列
+    for(let c=0;c<gridCols;c++) gridCells.add(c);            // 最上行
+    const mid = Math.floor(gridCols/2);
+    for(let r=0;r<gridRows;r++) gridCells.add(r*gridCols+mid); // 中央列
+  } else if (type === 'U') {
+    // 左列 + 下段 + 右列
+    for(let r=0;r<gridRows;r++) { gridCells.add(r*gridCols); gridCells.add(r*gridCols+gridCols-1); }
+    for(let c=0;c<gridCols;c++) gridCells.add((gridRows-1)*gridCols+c);
+  }
+  rebuildGrid();
+}
+
+async function submitYard() {
+  const name = document.getElementById('ym-name').value.trim();
+  if (!name)  { alert('ヤード名を入力してください'); return; }
+  if (gridCells.size === 0) { alert('有効なマスを1つ以上選択してください'); return; }
+
+  const cellSize = +document.getElementById('ym-cell').value || 80;
+
+  if (editYId !== null) {
+    const y = yards.find(y=>y.id==editYId);
+    Object.assign(y,{ name, cellSize:String(cellSize), cols:String(gridCols), rows:String(gridRows),
+      cells:[...gridCells].sort((a,b)=>a-b).join(','), colorIdx:String(ymColorI) });
+    closeOv('ov-y'); render();
+    await gasCall({ action:'upsertYard', data:JSON.stringify(y) });
+  } else {
+    const y = { id:nextYId++, name,
+      x: Math.round(40+Math.random()*300), y: Math.round(40+Math.random()*200),
+      cellSize:String(cellSize), cols:String(gridCols), rows:String(gridRows),
+      cells:[...gridCells].sort((a,b)=>a-b).join(','), colorIdx:String(ymColorI) };
+    yards.push(y); closeOv('ov-y'); render();
+    await gasCall({ action:'upsertYard', data:JSON.stringify(y) });
+  }
+}
+
+async function deleteYard() {
+  if (!confirm('このヤードを削除しますか？')) return;
+  const id=editYId;
+  vehicles.forEach(v=>{if(String(v.yardId)===String(id)) v.yardId='';});
+  yards=yards.filter(y=>y.id!=id);
+  closeOv('ov-y'); render();
+  await gasCall({ action:'deleteYard', id:String(id) });
+}
+
+// ════════════════════════════════════════════════════════════
+//  CONTEXT MENU
+// ════════════════════════════════════════════════════════════
+function showCtx(e, vid) {
+  hideTip(); ctxVId=vid;
+  const ctx=document.getElementById('ctx');
+  ctx.style.left=e.clientX+'px'; ctx.style.top=e.clientY+'px';
+  ctx.classList.add('open');
+}
+document.addEventListener('click', ()=>document.getElementById('ctx').classList.remove('open'));
+function ctxEdit() { document.getElementById('ctx').classList.remove('open'); openVehicleModal(ctxVId); }
+async function ctxSt(st) {
+  const v=vehicles.find(x=>x.id==ctxVId); if(!v) return;
+  v.status=st; render(); await gasCall({action:'upsertVehicle',data:JSON.stringify(v)});
+}
+async function ctxDel() {
+  if (!confirm('この車両を削除しますか？')) return;
+  const id=ctxVId; vehicles=vehicles.filter(x=>x.id!=id); render();
+  await gasCall({action:'deleteVehicle',id:String(id)});
+}
+
+// ════════════════════════════════════════════════════════════
+//  TOOLTIP
+// ════════════════════════════════════════════════════════════
+function showTip(e, v) {
+  if (dragInfo||yardDrag) return;
+  const st=ST[v.status]||ST.inyard, y=yards.find(y=>String(y.id)===String(v.yardId));
+  document.getElementById('t-id').textContent    = v.number;
+  document.getElementById('t-shape').textContent = v.shape||'—';
+  document.getElementById('t-date').textContent  = v.date?new Date(v.date).toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
+  document.getElementById('t-status').textContent= st.label;
+  document.getElementById('t-status').style.color= st.c;
+  document.getElementById('t-yard').textContent  = y?y.name:'未配置';
+  moveTip(e); document.getElementById('tip').classList.add('on');
+}
+function hideTip() { document.getElementById('tip').classList.remove('on'); }
+function moveTip(e) { const t=document.getElementById('tip'); t.style.left=(e.clientX+14)+'px'; t.style.top=(e.clientY-8)+'px'; }
+document.addEventListener('mousemove', e=>{ if(document.getElementById('tip').classList.contains('on')) moveTip(e); });
+
+// ════════════════════════════════════════════════════════════
+//  COLOR PICKERS
+// ════════════════════════════════════════════════════════════
+function buildColorRow(elId, palette, selected, onChange) {
+  const row=document.getElementById(elId); row.innerHTML='';
+  palette.forEach((c,i)=>{
+    const s=document.createElement('div');
+    s.className='cswatch'+(c===selected?' sel':'');
+    s.style.background=c;
+    s.onclick=()=>{
+      row.querySelectorAll('.cswatch').forEach(x=>x.classList.remove('sel'));
+      s.classList.add('sel'); onChange(c,i);
+      // ヤード色変更時はグリッドのプレビュー色も更新
+      if (elId==='ym-colors') { updateGridColor(); rebuildGrid(); }
+    };
+    row.appendChild(s);
+  });
+}
+function initPickers() {
+  buildColorRow('vm-colors', V_COLORS, vmColor, c=>vmColor=c);
+  buildColorRow('ym-colors', Z_BD, Z_BD[0], (c,i)=>ymColorI=i);
+}
+function populateYardSel(elId, cur) {
+  const el=document.getElementById(elId);
+  el.innerHTML='<option value="">— 未配置 —</option>';
+  yards.forEach(y=>{ const o=document.createElement('option'); o.value=y.id; o.textContent=y.name; if(String(y.id)===String(cur)) o.selected=true; el.appendChild(o); });
+}
+
+// ════════════════════════════════════════════════════════════
+//  OVERLAY
+// ════════════════════════════════════════════════════════════
+function openOv(id)  { document.getElementById(id).classList.add('open'); }
+function closeOv(id) {
+  document.getElementById(id).classList.remove('open');
+  // モーダル操作中にSpaceキーが押されたままになることがあるためリセット
+  spaceHeld = false;
+  document.getElementById('canvas-wrap').classList.remove('space-held');
+}
+document.querySelectorAll('.overlay').forEach(el=>
+  el.addEventListener('click', e=>{ if(e.target===el) el.classList.remove('open'); })
+);
+
+// ════════════════════════════════════════════════════════════
+//  UTILS
+// ════════════════════════════════════════════════════════════
+function hexA(hex, a) {
+  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+function clamp(v, mn, mx) { return Math.max(mn, Math.min(mx, v)); }
+
+// ════════════════════════════════════════════════════════════
+//  ZOOM / PAN
+// ════════════════════════════════════════════════════════════
+const ZOOM_MIN = 0.1, ZOOM_MAX = 2.0;
+let CV_W = 6000, CV_H = 4000;
+
+function resizeCanvas() {
+  const w = Math.max(1000, Math.min(30000, +document.getElementById('cv-w').value || 6000));
+  const h = Math.max(1000, Math.min(30000, +document.getElementById('cv-h').value || 4000));
+  CV_W = w; CV_H = h;
+  document.getElementById('cv-w').value = w;
+  document.getElementById('cv-h').value = h;
+  const cv = document.getElementById('canvas');
+  cv.style.width  = w + 'px';
+  cv.style.height = h + 'px';
+  // GAS / localStorage 両方に保存
+  localStorage.setItem('yard_cv_size', JSON.stringify({ w, h }));
+  gasCall({ action:'saveSetting', key:'canvas_width',  value:String(w) });
+  gasCall({ action:'saveSetting', key:'canvas_height', value:String(h) });
+}
+
+// GASから取得したsettingsオブジェクトをUIに反映
+function applySettingsFromGAS(settings) {
+  const w = Math.max(1000, Math.min(30000, +settings.canvas_width  || 6000));
+  const h = Math.max(1000, Math.min(30000, +settings.canvas_height || 4000));
+  CV_W = w; CV_H = h;
+  document.getElementById('cv-w').value = w;
+  document.getElementById('cv-h').value = h;
+  const cv = document.getElementById('canvas');
+  cv.style.width  = w + 'px';
+  cv.style.height = h + 'px';
+  // localStorageにも反映（オフライン起動時のフォールバック用）
+  localStorage.setItem('yard_cv_size', JSON.stringify({ w, h }));
+}
+
+function applyTransform() {
+  const scaler = document.getElementById('canvas-scaler');
+  scaler.style.transform = `translate(${vPanX}px,${vPanY}px) scale(${vZoom})`;
+  document.getElementById('zoom-label').textContent = Math.round(vZoom*100) + '%';
+}
+
+// ズームイン/アウト（画面中心基点）
+function zoomAt(delta, cx, cy) {
+  const wrap   = document.getElementById('canvas-wrap');
+  const newZ   = clamp(vZoom + delta, ZOOM_MIN, ZOOM_MAX);
+  // 画面内の固定点(cx,cy)がズーム前後で同じキャンバス座標を指すようにパンを補正
+  const ratio  = newZ / vZoom;
+  vPanX = cx - ratio * (cx - vPanX);
+  vPanY = cy - ratio * (cy - vPanY);
+  vZoom = newZ;
+  applyTransform();
+}
+
+function zoomBy(delta) {
+  const wrap = document.getElementById('canvas-wrap');
+  const cx   = wrap.offsetWidth  / 2;
+  const cy   = wrap.offsetHeight / 2;
+  zoomAt(delta, cx, cy);
+}
+
+function zoomReset() {
+  vZoom = 1.0; vPanX = 0; vPanY = 0;
+  applyTransform();
+}
+
+// スクリーン座標 → キャンバス座標
+function screenToCanvas(sx, sy) {
+  const wrap = document.getElementById('canvas-wrap');
+  const rect = wrap.getBoundingClientRect();
+  return {
+    x: (sx - rect.left - vPanX) / vZoom,
+    y: (sy - rect.top  - vPanY) / vZoom,
+  };
+}
+
+// ────────────────────────────────────────────────────────────
+//  ホイールズーム（Spaceキー or ctrlキー押下時）
+// ────────────────────────────────────────────────────────────
+document.getElementById('canvas-wrap').addEventListener('wheel', e => {
+  if (!spaceHeld && !e.ctrlKey) return; // Space or Ctrl のみ反応
+  e.preventDefault();
+  const delta = e.deltaY < 0 ? +0.1 : -0.1;
+  const wrap  = document.getElementById('canvas-wrap');
+  const rect  = wrap.getBoundingClientRect();
+  zoomAt(delta, e.clientX - rect.left, e.clientY - rect.top);
+}, { passive: false });
+
+// ────────────────────────────────────────────────────────────
+//  パン（中ボタンドラッグ or Space+左ドラッグ）
+// ────────────────────────────────────────────────────────────
+document.getElementById('canvas-wrap').addEventListener('mousedown', e => {
+  const isMid   = e.button === 1;
+  const isSpace = spaceHeld && e.button === 0;
+  if (!isMid && !isSpace) return;
+  e.preventDefault();
+  panDrag = { startX: e.clientX, startY: e.clientY, startPanX: vPanX, startPanY: vPanY };
+  document.getElementById('canvas-wrap').classList.add('panning');
+
+  function onMove(ev) {
+    if (!panDrag) return;
+    vPanX = panDrag.startPanX + (ev.clientX - panDrag.startX);
+    vPanY = panDrag.startPanY + (ev.clientY - panDrag.startY);
+    applyTransform();
+  }
+  function onUp() {
+    panDrag = null;
+    document.getElementById('canvas-wrap').classList.remove('panning');
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup',   onUp);
+  }
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup',   onUp);
+});
+
+// ────────────────────────────────────────────────────────────
+//  Spaceキー管理
+// ────────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space' && !e.repeat &&
+      !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) {
+    e.preventDefault();
+    spaceHeld = true;
+    document.getElementById('canvas-wrap').classList.add('space-held');
+  }
+});
+document.addEventListener('keyup', e => {
+  if (e.code === 'Space') {
+    spaceHeld = false;
+    document.getElementById('canvas-wrap').classList.remove('space-held');
+  }
+});
+
+// ════════════════════════════════════════════════════════════
+//  BOOT
+// ════════════════════════════════════════════════════════════
+// キャンバスサイズ復元
+const savedSize = localStorage.getItem('yard_cv_size');
+if (savedSize) {
+  try {
+    const { w, h } = JSON.parse(savedSize);
+    CV_W = w; CV_H = h;
+    document.getElementById('cv-w').value = w;
+    document.getElementById('cv-h').value = h;
+    const cv = document.getElementById('canvas');
+    cv.style.width  = w + 'px';
+    cv.style.height = h + 'px';
+  } catch(e) {}
+}
+// 初期transform適用
+applyTransform();
+
+const savedUrl = localStorage.getItem('yard_gas_url');
+if (savedUrl) {
+  document.getElementById('gas-url').value = savedUrl;
+  GAS_URL = savedUrl;
+  gasRead().then(()=>{ hideSetup(); setSb('🔗 GAS接続中'); })
+           .catch(e=>{ setErr('前回のURLで接続できませんでした:\n'+e.message); });
+}
+</script>
+</body>
+</html>
