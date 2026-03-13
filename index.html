@@ -39,6 +39,58 @@ body { font-family:'Noto Sans JP',sans-serif; background:var(--bg); color:var(--
 /* ─ LAYOUT ─ */
 .body-wrap { display:flex; flex:1; overflow:hidden; }
 
+/* ─ MOBILE ─ */
+@media (max-width: 700px) {
+  /* ヘッダー: コンパクト化 */
+  .hdr { height:48px; padding:0 10px; gap:7px; overflow-x:auto; }
+  .hdr::-webkit-scrollbar { display:none; }
+  .logo em { display:none; }
+  /* チップを非表示（ステータスはサイドバー内に表示） */
+  .chip { display:none; }
+  /* ズーム欄を非表示（ピンチズームで代替） */
+  .hdr > div[style*="cv-w"] { display:none; }
+  /* サイドバー: デフォルト非表示、スライドイン */
+  .sidebar {
+    position:fixed; left:0; top:48px; bottom:0; z-index:100;
+    transform:translateX(-100%); transition:transform .25s ease;
+    box-shadow:4px 0 24px rgba(0,0,0,.6);
+    width:88vw; max-width:320px;
+  }
+  .sidebar.sb-open { transform:translateX(0); }
+  /* サイドバー開閉オーバーレイ */
+  .sb-backdrop {
+    display:none; position:fixed; inset:0; z-index:99;
+    background:rgba(0,0,0,.5);
+  }
+  .sb-backdrop.open { display:block; }
+  /* ボトムバー非表示 */
+  .bbar { display:none; }
+  /* モーダル全幅 */
+  .modal { width:96vw; max-width:none; margin:0; border-radius:10px 10px 0 0;
+           position:fixed; bottom:0; left:0; right:0; max-height:92vh; }
+  .overlay { align-items:flex-end; }
+  /* フローティングボタン（＋車両・＋ヤード） */
+  .fab-wrap {
+    position:fixed; bottom:16px; right:16px; z-index:80;
+    display:flex; flex-direction:column; gap:10px; align-items:flex-end;
+  }
+  .fab {
+    width:52px; height:52px; border-radius:50%; border:none;
+    font-size:22px; cursor:pointer; box-shadow:0 4px 16px rgba(0,0,0,.5);
+    display:flex; align-items:center; justify-content:center;
+    transition:transform .15s;
+  }
+  .fab:active { transform:scale(.93); }
+  .fab-v { background:var(--acc); color:#000; }
+  .fab-y { background:var(--surf2); color:var(--text); border:1px solid var(--bdr); font-size:16px; }
+  /* ヘッダーの＋ボタン非表示 */
+  .hdr-add-btns { display:none; }
+}
+@media (min-width: 701px) {
+  .fab-wrap    { display:none; }
+  .sb-backdrop { display:none !important; }
+}
+
 /* ─ SIDEBAR ─ */
 .sidebar { width:248px; background:var(--surf); border-right:1px solid var(--bdr); display:flex; flex-direction:column; flex-shrink:0; overflow:hidden; }
 .sb-sec { padding:11px 12px; border-bottom:1px solid var(--bdr); }
@@ -227,6 +279,9 @@ body { font-family:'Noto Sans JP',sans-serif; background:var(--bg); color:var(--
 
 <!-- ══ HEADER ═════════════════════════════════════════════════ -->
 <header class="hdr">
+  <!-- スマホ: サイドバー開閉ボタン -->
+  <button class="btn btn-ghost" id="sb-toggle" onclick="toggleSidebar()"
+    style="display:none;padding:6px 10px;font-size:16px;border:none;">☰</button>
   <div class="logo">YARD MGR <em>v3</em></div>
   <div class="chip"><div class="dot" style="background:var(--blue)"></div>在庫 <b id="s-total">0</b></div>
   <div class="chip"><div class="dot" style="background:var(--green)"></div>出庫待 <b id="s-ready">0</b></div>
@@ -254,8 +309,10 @@ body { font-family:'Noto Sans JP',sans-serif; background:var(--bg); color:var(--
       onchange="resizeCanvas()">
     <span style="font-size:10px;">px</span>
   </div>
-  <button class="btn btn-ghost" onclick="openYardModal(null)">＋ ヤード追加</button>
-  <button class="btn btn-acc"   onclick="openVehicleModal(null)">＋ 車両登録</button>
+  <div class="hdr-add-btns" style="display:flex;gap:8px;">
+    <button class="btn btn-ghost" onclick="openYardModal(null)">＋ ヤード追加</button>
+    <button class="btn btn-acc"   onclick="openVehicleModal(null)">＋ 車両登録</button>
+  </div>
 </header>
 
 <!-- ══ BODY ═══════════════════════════════════════════════════ -->
@@ -290,6 +347,15 @@ body { font-family:'Noto Sans JP',sans-serif; background:var(--bg); color:var(--
       </div>
     </div>
   </div>
+</div>
+
+<!-- ══ SIDEBAR BACKDROP ════════════════════════════════════════ -->
+<div class="sb-backdrop" id="sb-backdrop" onclick="closeSidebar()"></div>
+
+<!-- ══ FAB（スマホ用フローティングボタン） ══════════════════════ -->
+<div class="fab-wrap">
+  <button class="fab fab-v" onclick="openVehicleModal(null)" title="車両登録">＋</button>
+  <button class="fab fab-y" onclick="openYardModal(null)" title="ヤード追加">⊞</button>
 </div>
 
 <!-- ══ BOTTOM BAR ═════════════════════════════════════════════ -->
@@ -834,6 +900,9 @@ function hiV(vid) {
   // 最前面に浮かせる（z-index: 100 = ドラッグ中(50)よりも高く設定）
   el.style.zIndex = '100';
   el.classList.add('focused');
+
+  // スマホ: サイドバーを閉じてキャンバスに戻る
+  if (isMobile()) closeSidebar();
 
   // ハイライトアニメ
   el.classList.remove('hi'); void el.offsetWidth; el.classList.add('hi');
@@ -1426,6 +1495,38 @@ document.addEventListener('keyup', e => {
 })();
 
 // ════════════════════════════════════════════════════════════
+//  スマホUI切り替え
+// ════════════════════════════════════════════════════════════
+function isMobile() { return window.innerWidth <= 700; }
+
+function applyMobileUI() {
+  const toggle = document.getElementById('sb-toggle');
+  if (isMobile()) {
+    toggle.style.display = '';
+  } else {
+    toggle.style.display = 'none';
+    // PCでは常にサイドバーを表示状態にリセット
+    document.querySelector('.sidebar').classList.remove('sb-open');
+    document.getElementById('sb-backdrop').classList.remove('open');
+  }
+}
+
+function toggleSidebar() {
+  const sb  = document.querySelector('.sidebar');
+  const bd  = document.getElementById('sb-backdrop');
+  const isOpen = sb.classList.contains('sb-open');
+  sb.classList.toggle('sb-open', !isOpen);
+  bd.classList.toggle('open', !isOpen);
+}
+
+function closeSidebar() {
+  document.querySelector('.sidebar').classList.remove('sb-open');
+  document.getElementById('sb-backdrop').classList.remove('open');
+}
+
+window.addEventListener('resize', applyMobileUI);
+
+// ════════════════════════════════════════════════════════════
 //  BOOT
 // ════════════════════════════════════════════════════════════
 // キャンバスサイズ復元
@@ -1443,6 +1544,8 @@ if (savedSize) {
 }
 // 初期transform適用
 applyTransform();
+// スマホUI初期化
+applyMobileUI();
 
 const savedUrl = localStorage.getItem('yard_gas_url');
 if (savedUrl) {
