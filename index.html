@@ -529,11 +529,29 @@ function gasJsonp(params) {
     const url = new URL(GAS_URL);
     Object.entries(params).forEach(([k,v]) => url.searchParams.set(k, v));
     url.searchParams.set('callback', cb);
-    const timer = setTimeout(() => { delete window[cb]; sc.remove(); rej(new Error('タイムアウト')); }, 15000);
-    window[cb] = (data) => { clearTimeout(timer); delete window[cb]; sc.remove(); data.error ? rej(new Error(data.error)) : res(data); };
+
+    // scriptタグを先に作成してからタイマーを登録
     const sc = document.createElement('script');
+
+    function cleanup() {
+      clearTimeout(timer);
+      delete window[cb];
+      if (sc.parentNode) sc.parentNode.removeChild(sc);
+    }
+
+    // コールバック関数をwindowに登録（scriptタグ追加より前に必ず登録）
+    window[cb] = (data) => {
+      cleanup();
+      data.error ? rej(new Error(data.error)) : res(data);
+    };
+
+    const timer = setTimeout(() => {
+      cleanup();
+      rej(new Error('タイムアウト'));
+    }, 15000);
+
+    sc.onerror = () => { cleanup(); rej(new Error('スクリプト読込エラー')); };
     sc.src = url.toString();
-    sc.onerror = () => { clearTimeout(timer); delete window[cb]; rej(new Error('スクリプト読込エラー')); };
     document.head.appendChild(sc);
   });
 }
