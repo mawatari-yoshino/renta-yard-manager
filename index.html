@@ -703,31 +703,60 @@ function renderZones() {
     pathFill.setAttribute('stroke-linejoin', 'round');
     svg.appendChild(pathFill);
 
-    // SVG: 入庫口マス（ヤード原点の1マスを強調表示）
+    // SVG: 入庫口マス（ヤードの左上に1マス飛び出し）
     const cell  = parseInt(y.cellSize)||80;
-    const ex    = +y.x, ey = +y.y;
-    const entry = document.createElementNS('http://www.w3.org/2000/svg','rect');
-    entry.setAttribute('x',      ex + 3);
-    entry.setAttribute('y',      ey + 3);
-    entry.setAttribute('width',  cell - 6);
-    entry.setAttribute('height', cell - 6);
-    entry.setAttribute('rx',     7);
-    entry.setAttribute('fill',   'rgba(255,255,255,.06)');
-    entry.setAttribute('stroke', Z_BD[ci].replace('.5)', '.9)'));
-    entry.setAttribute('stroke-width',    '1.5');
-    entry.setAttribute('stroke-dasharray','4 3');
-    svg.appendChild(entry);
+    // 入庫口はヤード左端に合わせて、上に1マス分飛び出し
+    const exx   = +y.x;
+    const eyy   = +y.y - cell < 0 ? +y.y + (parseInt(y.rows)||4)*cell : +y.y - cell;
+
+    // 入庫口の背景（やや明るめで区別）
+    const entryBg = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    entryBg.setAttribute('x',      exx + 2);
+    entryBg.setAttribute('y',      eyy + 2);
+    entryBg.setAttribute('width',  cell - 4);
+    entryBg.setAttribute('height', cell - 4);
+    entryBg.setAttribute('rx',     8);
+    entryBg.setAttribute('fill',   Z_FILL[ci].replace('.18)', '.32)'));
+    svg.appendChild(entryBg);
+
+    // 入庫口の枠（実線で目立たせる）
+    const entryRect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    entryRect.setAttribute('x',      exx + 2);
+    entryRect.setAttribute('y',      eyy + 2);
+    entryRect.setAttribute('width',  cell - 4);
+    entryRect.setAttribute('height', cell - 4);
+    entryRect.setAttribute('rx',     8);
+    entryRect.setAttribute('fill',   'none');
+    entryRect.setAttribute('stroke', Z_BD[ci].replace('.5)', ',.95)'));
+    entryRect.setAttribute('stroke-width', '2');
+    svg.appendChild(entryRect);
 
     // 入庫口ラベル
     const entryTxt = document.createElementNS('http://www.w3.org/2000/svg','text');
-    entryTxt.setAttribute('x',           ex + cell/2);
-    entryTxt.setAttribute('y',           ey + cell/2 + 4);
+    entryTxt.setAttribute('x',           exx + cell/2);
+    entryTxt.setAttribute('y',           eyy + cell/2 + 4);
     entryTxt.setAttribute('text-anchor', 'middle');
-    entryTxt.setAttribute('font-size',   '10');
-    entryTxt.setAttribute('fill',        Z_BD[ci].replace('.5)', '.7)'));
+    entryTxt.setAttribute('font-size',   '11');
+    entryTxt.setAttribute('fill',        Z_BD[ci].replace('.5)', '.9)'));
     entryTxt.setAttribute('font-family', 'Noto Sans JP, sans-serif');
-    entryTxt.textContent = '入庫';
+    entryTxt.setAttribute('font-weight', 'bold');
+    entryTxt.textContent = '入庫口';
     svg.appendChild(entryTxt);
+
+    // ヤードとの接続線（入庫口→ヤード左上角へ）
+    const connector = document.createElementNS('http://www.w3.org/2000/svg','line');
+    connector.setAttribute('x1', exx + cell/2);
+    connector.setAttribute('y1', eyy + cell);
+    connector.setAttribute('x2', +y.x + cell/2);
+    connector.setAttribute('y2', +y.y);
+    // 左端揃えなので接続線は垂直線
+    connector.setAttribute('stroke', Z_BD[ci].replace('.5)', '.4)'));
+    connector.setAttribute('stroke-width', '1.5');
+    connector.setAttribute('stroke-dasharray', '5 3');
+    svg.appendChild(connector);
+
+    // 入庫口座標をデータとして保持（moveVehicleToYardEntryで参照）
+    y._entryX = exx; y._entryY = eyy;
 
     // HTML: ドラッグハンドル（ラベル）
     const bbox  = yardBBox(y);
@@ -1159,12 +1188,15 @@ function moveVehicleToYardEntry(v) {
   const y = yards.find(y=>String(y.id)===String(v.yardId));
   if (!y) { v.x=80; v.y=80; return; }
   const cell = parseInt(y.cellSize)||80;
-  // 入庫口 = ヤード原点(x,y)の1マス固定・中央寄せ
-  v.x = Math.round(+y.x + (cell - 72) / 2);  // 72=マグネット幅
-  v.y = Math.round(+y.y + (cell - 72) / 2);  // 72=マグネット高さ
-  // マイナスにならないよう補正
-  if (v.x < +y.x) v.x = Math.round(+y.x + 4);
-  if (v.y < +y.y) v.y = Math.round(+y.y + 4);
+  // renderZonesで計算した入庫口座標を使う
+  // まだrenderZones未実行の場合は自前で計算
+  let ex = (y._entryX !== undefined) ? y._entryX : +y.x;
+  let ey = (y._entryY !== undefined) ? y._entryY : (+y.y - cell < 0 ? +y.y + (parseInt(y.rows)||4)*cell : +y.y - cell);
+  // マグネット(72×72)を入庫口マス内に中央配置
+  v.x = Math.round(ex + (cell - 72) / 2);
+  v.y = Math.round(ey + (cell - 72) / 2);
+  if (v.x < 0) v.x = ex + 4;
+  if (v.y < 0) v.y = ey + 4;
 }
 
 // コンテキストメニュー: ヤード変更
