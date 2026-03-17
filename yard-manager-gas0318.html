@@ -555,12 +555,6 @@ body { font-family:'Noto Sans JP',sans-serif; background:var(--bg); color:var(--
 
 <script>
 // ════════════════════════════════════════════════════════════
-//  PASSWORD（GAS照合方式）
-//  パスワードはHTML内に持たず、スプレッドシートのsettingsシートで管理
-//  settings シートの password キーの値と照合する
-// ════════════════════════════════════════════════════════════
-
-// ════════════════════════════════════════════════════════════
 //  パスワード認証（ID + ソルト + SHA-256ハッシュ方式）
 //  フロー:
 //  1. ユーザーIDを送信 → GASからsaltを取得
@@ -590,8 +584,7 @@ function checkPwLock(msg) {
     document.getElementById('pw-userid').disabled = true;
     document.getElementById('pw-btn').disabled    = true;
     document.getElementById('pw-err').textContent =
-      msg || 'ログイン試行回数が上限（5回）に達しました。
-管理者に連絡するかブラウザのlocalStorageをクリアしてください。';
+      msg || 'ログイン試行回数が上限（5回）に達しました。管理者に連絡するかブラウザのlocalStorageをクリアしてください。';
   }
   return locked;
 }
