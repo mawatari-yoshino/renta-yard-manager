@@ -18,7 +18,7 @@ html,body { height:100%; overflow:hidden; }
 body { font-family:'Noto Sans JP',sans-serif; background:var(--bg); color:var(--text); display:flex; flex-direction:column; }
 
 /* ─ HEADER ─ */
-.hdr { height:52px; background:var(--surf); border-bottom:1px solid var(--bdr); display:flex; align-items:center; padding:0 16px; gap:11px; flex-shrink:0; z-index:50; }
+.hdr { height:52px; min-height:52px; background:var(--surf); border-bottom:1px solid var(--bdr); display:flex; align-items:center; padding:0 16px; gap:11px; flex-shrink:0; z-index:50; overflow:hidden; }
 .logo { font-family:'Bebas Neue',cursive; font-size:22px; letter-spacing:4px; color:var(--acc); white-space:nowrap; }
 .logo em { color:var(--muted); font-size:11px; font-style:normal; letter-spacing:1px; margin-left:6px; }
 .chip { background:var(--surf2); border:1px solid var(--bdr); border-radius:6px; padding:3px 10px; font-size:12px; font-family:'JetBrains Mono',monospace; display:flex; align-items:center; gap:5px; white-space:nowrap; }
@@ -42,7 +42,7 @@ body { font-family:'Noto Sans JP',sans-serif; background:var(--bg); color:var(--
 /* ─ MOBILE ─ */
 @media (max-width: 700px) {
   /* ヘッダー: コンパクト化・折り返しなし */
-  .hdr { height:48px; padding:0 8px; gap:6px; overflow:hidden; flex-wrap:nowrap; }
+  .hdr { height:48px !important; min-height:48px !important; padding:0 8px; gap:6px; overflow:hidden; flex-wrap:nowrap; }
   .logo { font-size:18px; letter-spacing:2px; }
   .logo em { display:none; }
   /* チップ・ズーム・キャンバスサイズ・sync非表示 */
@@ -86,12 +86,12 @@ body { font-family:'Noto Sans JP',sans-serif; background:var(--bg); color:var(--
   .fab-y { background:var(--surf2); color:var(--text); border:1px solid var(--bdr); font-size:16px; }
   /* ヘッダーの＋ボタン非表示 */
   .hdr-add-btns { display:none !important; }
-  /* ☰ボタン表示 */
-  #sb-toggle { display:flex !important; }
+
 }
 @media (min-width: 701px) {
   .fab-wrap    { display:none; }
   .sb-backdrop { display:none !important; }
+  #sb-toggle   { display:none !important; }
 }
 
 /* ─ SIDEBAR ─ */
@@ -284,7 +284,7 @@ body { font-family:'Noto Sans JP',sans-serif; background:var(--bg); color:var(--
 <header class="hdr">
   <!-- スマホ: サイドバー開閉ボタン -->
   <button class="btn btn-ghost" id="sb-toggle" onclick="toggleSidebar()"
-    style="display:none;padding:6px 10px;font-size:16px;border:none;">☰</button>
+    style="padding:6px 10px;font-size:16px;border:none;">☰</button>
   <div class="logo">YARD MGR <em>v3</em></div>
   <div class="chip"><div class="dot" style="background:var(--blue)"></div>在庫 <b id="s-total">0</b></div>
   <div class="chip"><div class="dot" style="background:#b07eea"></div>預かり <b id="s-azukari">0</b></div>
@@ -1611,12 +1611,8 @@ document.addEventListener('keyup', e => {
 function isMobile() { return window.innerWidth <= 700; }
 
 function applyMobileUI() {
-  const toggle = document.getElementById('sb-toggle');
-  if (isMobile()) {
-    toggle.style.display = '';
-  } else {
-    toggle.style.display = 'none';
-    // PCでは常にサイドバーを表示状態にリセット
+  if (!isMobile()) {
+    // PCではサイドバーを常時表示状態にリセット
     document.querySelector('.sidebar').classList.remove('sb-open');
     document.getElementById('sb-backdrop').classList.remove('open');
   }
