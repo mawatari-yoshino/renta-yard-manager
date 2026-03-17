@@ -1658,12 +1658,10 @@ applyTransform();
 // スマホUI初期化
 applyMobileUI();
 
+// 前回のURLがあれば入力欄に入れておく（自動起動はしない）
 const savedUrl = localStorage.getItem('yard_gas_url');
 if (savedUrl) {
   document.getElementById('gas-url').value = savedUrl;
-  GAS_URL = savedUrl;
-  gasRead().then(()=>{ hideSetup(); setSb('🔗 GAS接続中'); })
-           .catch(e=>{ setErr('前回のURLで接続できませんでした:\n'+e.message); });
 }
 </script>
 </body>
