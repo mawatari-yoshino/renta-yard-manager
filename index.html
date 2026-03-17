@@ -557,11 +557,12 @@ function gasJsonp(params) {
 }
 
 async function gasPost(body) {
-  // no-cors: レスポンスボディは読めないが、GAS側での書き込みは成功する
+  // no-cors + text/plain: application/jsonはno-corsでブロックされるためtext/plainで送信
+  // GAS側のdoPostはpostData.contentsをJSON.parseして受け取る
   await fetch(GAS_URL, {
     method: 'POST',
     mode:   'no-cors',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'text/plain' },
     body: JSON.stringify(body),
   });
 }
@@ -833,7 +834,7 @@ function startYardDrag(e, yid) {
     if (handle2) handle2.classList.remove('editing');
     yardDrag = null;
     // GAS同期
-    gasCall({ action:'upsertYard', data: JSON.stringify(y) });
+    gasCall({ action:'upsertYard', data: y });
     render();
   }
 
@@ -1019,7 +1020,7 @@ async function submitVehicle() {
     // ヤードが変更された場合は新しいヤードの左上付近に移動
     if (yardChanged) moveVehicleToYardEntry(v);
     closeOv('ov-v'); render();
-    await gasCall({ action:'upsertVehicle', data:JSON.stringify(v) });
+    await gasCall({ action:'upsertVehicle', data:v });
   } else {
     const yid=document.getElementById('vm-yard').value;
     const y=yards.find(y=>String(y.id)===yid);
@@ -1027,7 +1028,7 @@ async function submitVehicle() {
       status:document.getElementById('vm-status').value, date:document.getElementById('vm-date').value,
       color:vmColor, yardId:yid, x:y?Math.round(+y.x+20):80, y:y?Math.round(+y.y+46):80 };
     vehicles.push(v); closeOv('ov-v'); render();
-    await gasCall({ action:'upsertVehicle', data:JSON.stringify(v) });
+    await gasCall({ action:'upsertVehicle', data:v });
   }
 }
 
@@ -1165,14 +1166,14 @@ async function submitYard() {
     Object.assign(y,{ name, cellSize:String(cellSize), cols:String(gridCols), rows:String(gridRows),
       cells:[...gridCells].sort((a,b)=>a-b).join(','), colorIdx:String(ymColorI) });
     closeOv('ov-y'); render();
-    await gasCall({ action:'upsertYard', data:JSON.stringify(y) });
+    await gasCall({ action:'upsertYard', data:y });
   } else {
     const y = { id:nextYId++, name,
       x: Math.round(40+Math.random()*300), y: Math.round(40+Math.random()*200),
       cellSize:String(cellSize), cols:String(gridCols), rows:String(gridRows),
       cells:[...gridCells].sort((a,b)=>a-b).join(','), colorIdx:String(ymColorI) };
     yards.push(y); closeOv('ov-y'); render();
-    await gasCall({ action:'upsertYard', data:JSON.stringify(y) });
+    await gasCall({ action:'upsertYard', data:y });
   }
 }
 
@@ -1229,7 +1230,7 @@ function ctxYard(yid) {
 
 async function ctxSt(st) {
   const v=vehicles.find(x=>x.id==ctxVId); if(!v) return;
-  v.status=st; render(); await gasCall({action:'upsertVehicle',data:JSON.stringify(v)});
+  v.status=st; render(); await gasCall({action:'upsertVehicle',data:v});
 }
 async function ctxDel() {
   if (!confirm('この車両を削除しますか？')) return;
