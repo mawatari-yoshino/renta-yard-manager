@@ -103,7 +103,7 @@ body { font-family:'Noto Sans JP',sans-serif; background:var(--bg); color:var(--
 .sb-sec.grow { flex:1; overflow:hidden; display:flex; flex-direction:column; }
 .sb-ttl { font-size:10px; font-weight:700; letter-spacing:2px; color:var(--muted); text-transform:uppercase; margin-bottom:8px; }
 .search-box { position:relative; }
-.search-box input { width:100%; background:var(--surf2); border:1px solid var(--bdr); border-radius:6px; padding:7px 10px 7px 27px; font-size:16px; color:var(--text); font-family:'Noto Sans JP',sans-serif; outline:none; }
+.search-box input { width:100%; background:var(--surf2); border:1px solid var(--bdr); border-radius:6px; padding:7px 10px 7px 27px; font-size:13px; color:var(--text); font-family:'Noto Sans JP',sans-serif; outline:none; }
 .search-box input:focus { border-color:var(--acc); }
 .search-box .ico { position:absolute; left:9px; top:50%; transform:translateY(-50%); font-size:12px; pointer-events:none; }
 .vscroll { flex:1; overflow-y:auto; }
@@ -160,8 +160,8 @@ body { font-family:'Noto Sans JP',sans-serif; background:var(--bg); color:var(--
 .magnet::before { content:''; position:absolute; top:0; left:0; right:0; height:4px; background:currentColor; opacity:.6; }
 .magnet:hover   { box-shadow:0 0 0 2px var(--acc), 0 8px 20px rgba(0,0,0,.7); transform:translateY(-2px); z-index:20; }
 .magnet.is-dragging { cursor:grabbing; opacity:.65; transform:scale(1.07) rotate(.6deg) !important; z-index:50; box-shadow:0 12px 32px rgba(0,0,0,.8) !important; pointer-events:none; }
-.m-num   { font-family:'JetBrains Mono',monospace; font-size:15px; font-weight:700; text-align:center; padding:0 5px; max-width:68px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; pointer-events:none; }
-.m-shape { font-size:9px; opacity:.65; margin-top:1px; text-align:center; max-width:68px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:0 4px; pointer-events:none; }
+.m-num   { font-family:'Noto Sans JP'; font-size:15px; font-weight:700; text-align:center; padding:0 5px; max-width:68px; white-space:nowrap; text-overflow:ellipsis; pointer-events:none; }
+.m-shape { font-size:14px; opacity:1; margin-top:1px; text-align:center; max-width:68px; white-space:nowrap; text-overflow:ellipsis; padding:0 4px; pointer-events:none; }
 .m-dot   { position:absolute; bottom:4px; right:4px; width:12px; height:12px; border-radius:50%; pointer-events:none; }
 @keyframes hpulse { 0%,100%{box-shadow:0 0 0 2px var(--acc)} 50%{box-shadow:0 0 0 9px rgba(245,166,35,.25)} }
 .hi { animation:hpulse .55s ease-in-out 3 !important; }
@@ -183,7 +183,7 @@ body { font-family:'Noto Sans JP',sans-serif; background:var(--bg); color:var(--
 .modal-title { font-family:'Bebas Neue',cursive; font-size:20px; letter-spacing:3px; color:var(--acc); margin-bottom:20px; }
 .field { margin-bottom:13px; }
 .field label { display:block; font-size:10px; font-weight:700; letter-spacing:1.5px; color:var(--muted); text-transform:uppercase; margin-bottom:5px; }
-.field input,.field select { width:100%; background:var(--surf2); border:1px solid var(--bdr); border-radius:6px; padding:9px 11px; font-size:16px; color:var(--text); font-family:'Noto Sans JP',sans-serif; outline:none; transition:border-color .15s; }
+.field input,.field select { width:100%; background:var(--surf2); border:1px solid var(--bdr); border-radius:6px; padding:9px 11px; font-size:14px; color:var(--text); font-family:'Noto Sans JP',sans-serif; outline:none; transition:border-color .15s; }
 .field input:focus,.field select:focus { border-color:var(--acc); }
 .row2 { display:flex; gap:10px; }
 .row2 .field { flex:1; }
@@ -259,7 +259,7 @@ body { font-family:'Noto Sans JP',sans-serif; background:var(--bg); color:var(--
 .pw-sub  { font-size:13px; color:var(--muted); margin-bottom:24px; }
 .pw-input {
   width:100%; background:var(--surf2); border:1px solid var(--bdr); border-radius:8px;
-  padding:12px 14px; font-size:16px; color:var(--text); text-align:center;
+  padding:12px 14px; font-size:18px; color:var(--text); text-align:center;
   letter-spacing:4px; outline:none; margin-bottom:10px;
   font-family:'JetBrains Mono',monospace;
 }
@@ -292,7 +292,7 @@ body { font-family:'Noto Sans JP',sans-serif; background:var(--bg); color:var(--
       <label style="font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;">GAS URL</label>
     </div>
     <input id="pw-gas-url" type="text" placeholder="https://script.google.com/macros/s/.../exec"
-      style="width:100%;background:var(--surf2);border:1px solid var(--bdr);border-radius:8px;padding:10px 12px;font-size:16px;color:var(--text);outline:none;margin-bottom:12px;font-family:'JetBrains Mono',monospace;"
+      style="width:100%;background:var(--surf2);border:1px solid var(--bdr);border-radius:8px;padding:10px 12px;font-size:11px;color:var(--text);outline:none;margin-bottom:12px;font-family:'JetBrains Mono',monospace;"
       onkeydown="if(event.key==='Enter') document.getElementById('pw-userid').focus()">
 
     <!-- ユーザーID -->
@@ -300,7 +300,7 @@ body { font-family:'Noto Sans JP',sans-serif; background:var(--bg); color:var(--
       <label style="font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;">ユーザーID</label>
     </div>
     <input id="pw-userid" type="text" placeholder="例: admin"
-      style="width:100%;background:var(--surf2);border:1px solid var(--bdr);border-radius:8px;padding:10px 12px;font-size:16px;color:var(--text);outline:none;margin-bottom:12px;font-family:'JetBrains Mono',monospace;"
+      style="width:100%;background:var(--surf2);border:1px solid var(--bdr);border-radius:8px;padding:10px 12px;font-size:14px;color:var(--text);outline:none;margin-bottom:12px;font-family:'JetBrains Mono',monospace;"
       onkeydown="if(event.key==='Enter') document.getElementById('pw-input').focus()">
 
     <!-- パスワード -->
